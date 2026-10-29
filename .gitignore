@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+# macOS
+.DS_Store
+
+# R session files
+*.RData
+*.Rhistory
+.Renviron

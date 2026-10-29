@@ -1,0 +1,64 @@
+---
+title: "Grid Outage Analysis"
+format: html
+editor: visual
+---
+
+## Collection process
+
+I used Selenium to load the ENTSO-E transmission outages table for one region and a seven-day period. The scraper collected rows while scrolling and moving through the pages.
+
+## Findings
+
+The sample contains 270 notices: 218 marked as planned, 2 as unplanned, and 50 as information. Average durations describe each notice’s full start-to-end period.
+
+## Limitations
+
+This is a small sample from one region and one week. Some `+1` labels indicate additional hidden values, so categories use the visible label. Notice durations can extend beyond the selected week.The local AI test produced incomplete and incorrect classifications, so its labels were not treated as reliable data.
+
+## Data
+
+```{r}
+outages <- arrow::read_parquet("data/clean/outages_seven_days_clean.parquet")
+nrow(outages)
+```
+
+## Notices by category
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+outages |>
+  mutate(category = case_when(
+    grepl("^Foreseen Maintenance", reason) ~ "Planned",
+    grepl("^Failure", reason) ~ "Unplanned",
+    reason == "Complementary Information" ~ "Information",
+    TRUE ~ "Review"
+  )) |>
+  count(category) |>
+  ggplot(aes(x = reorder(category, n), y = n)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = NULL, y = "Notices", title = "Notices by category")
+```
+
+
+## Average duration by category
+
+```{r}
+duration_summary <- outages |>
+  mutate(category = case_when(
+    grepl("^Foreseen Maintenance", reason) ~ "Planned",
+    grepl("^Failure", reason) ~ "Unplanned",
+    reason == "Complementary Information" ~ "Information",
+    TRUE ~ "Review"
+  )) |>
+  group_by(category) |>
+  summarise(average_hours = mean(duration_hours, na.rm = TRUE))
+
+ggplot(duration_summary, aes(x = reorder(category, average_hours), y = average_hours)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = NULL, y = "Average duration (hours)", title = "Average notice duration")
+```
